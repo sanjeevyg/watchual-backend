@@ -68,14 +68,38 @@ app.post("/login", ( request, response ) => {
                 if(!areSamePasswords) throw new Error("wrong Password!")
                 const user = results[1]
                 const payload = {username: user.username}
-                const secret = "SECRET"
+                const secret =  "SECRET"
 
                 jwt.sign(payload, secret, (error, token) => {
                     if(error) throw new Error("Sign in error!")
-                    response.json("it's a match")
+                    response.json(token)
                 }).catch(error => {
                     response.json({message: error.message})
                 })
             })
         })
 })
+
+app.get('/authenticate', authenticate, (request, response) => {
+    response.json({message: `Welcome ${request.user.username}!` })
+})
+
+function authenticate(request, response, next) {
+    const authHeader = request.get("Authorization")
+    const token = authHeader.split(" ")[1]
+    const secret = "SECRET"
+
+    jwt.verify(token, secret, (error, payload) => {
+        if(error) throw new Error("sign in error!")
+
+        database("users")
+        .where({username: payload.username})
+        .first()
+        .then(user => {
+            request.user = user
+            next()
+        }).catch(error => {
+            console.error({message: error.message})
+        })
+    })
+}
